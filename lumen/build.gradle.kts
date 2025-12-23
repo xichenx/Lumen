@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.xichen.lumen"
+    namespace = "com.xichen.lumen.library"
     compileSdk {
         version = release(36)
     }
