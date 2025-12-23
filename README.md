@@ -2,10 +2,10 @@
 
 <div align="center">
 
-![Lumen Logo](https://img.shields.io/badge/Lumen-Image%20Loader-blue?style=for-the-badge)
-![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-purple?style=for-the-badge&logo=kotlin)
-![Android](https://img.shields.io/badge/Android-API%2021+-green?style=for-the-badge&logo=android)
-![License](https://img.shields.io/badge/License-Apache%202.0-yellow?style=for-the-badge)
+![Lumen Logo](https://img.shields.io/badge/Lumen-Image%20Loader-blue?style=flat)
+![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-purple?style=flat&logo=kotlin)
+![Android](https://img.shields.io/badge/Android-API%2021+-green?style=flat&logo=android)
+![License](https://img.shields.io/badge/License-Apache%202.0-yellow?style=flat)
 
 **A Kotlin-first Android image loading library for business-friendly, AI scenarios, and list scenarios**
 
