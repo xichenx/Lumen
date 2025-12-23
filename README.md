@@ -40,20 +40,74 @@ While there are excellent image loading libraries like Glide and Coil in the And
 ### Core Features
 
 - ✅ **State Control**: Clear loading states (Loading / Success / Error / Fallback) with custom UI support
+  - Sealed class-based state model for type-safe state handling
+  - Flow-based reactive state updates
+  - Support for custom state UI rendering
+  
 - ✅ **Transparent Pipeline**: Every step is pluggable (Fetcher → Decryptor → Decoder → Transformer → Cache)
+  - Custom Fetcher for different data sources (Network, File, Uri, Resource)
+  - Optional Decryptor for encrypted images (AI scenarios)
+  - Pluggable Decoder with BitmapFactory integration
+  - Chainable Transformers (rounded corners, rotation, crop, blur)
+  - Memory cache with automatic LruCache management
+  
 - ✅ **Kotlin-first**: Fully leverages modern Kotlin features like DSL, coroutines, Flow
+  - DSL-style API for request configuration
+  - Coroutine-based asynchronous loading
+  - Flow for reactive state updates
+  - Type-safe sealed classes and data classes
+  
 - ✅ **RecyclerView Optimization**: Automatically cancels loading tasks for recycled views, preventing memory leaks and image flickering
+  - Automatic job cancellation on view recycling
+  - View tag-based target management
+  - Immediate placeholder display
+  
 - ✅ **Image Transformations**: Rounded corners, rotation, cropping, blur, etc. (applied directly to Bitmap, not View)
+  - Transformations applied to Bitmap pixels directly
+  - Support for chained transformations
+  - Smart View-level clipping for certain scaleTypes (centerCrop, fitXY)
+  
 - ✅ **Multiple Data Sources**: Supports URL, File, Uri, Resource ID
+  - Network URL loading with HttpURLConnection
+  - Local file system access
+  - Android ContentProvider Uri support
+  - Android resource ID support
+  
 - ✅ **Compose Support**: Native Jetpack Compose components and state management
+  - `LumenImage` composable for easy integration
+  - `rememberLumenState` for fine-grained state control
+  - Automatic state management with LaunchedEffect
+  
 - ✅ **Memory Cache**: Automatic memory cache based on LruCache
+  - Default cache size: 1/8 of available memory
+  - Automatic cache key generation (includes data, decryptor, transformers)
+  - Thread-safe cache operations
 
 ### Technical Highlights
 
 - 🔄 **Coroutine-driven**: Based on Kotlin Coroutines and Flow
+  - All I/O operations on `Dispatchers.IO`
+  - Image processing on `Dispatchers.Default`
+  - UI updates on `Dispatchers.Main`
+  - Flow-based reactive state emission
+  
 - 🎭 **State Management**: Sealed Class for loading states
+  - `ImageState.Loading`: Loading in progress
+  - `ImageState.Success(bitmap)`: Loaded successfully
+  - `ImageState.Error(throwable)`: Load failed
+  - `ImageState.Fallback`: Fallback state for custom handling
+  
 - 🧩 **Modular Design**: Core logic separated from UI (`lumen-core` has no Android UI dependencies)
+  - `lumen-core`: Pure business logic, no Android UI dependencies
+  - `lumen-view`: ImageView and ViewTarget support
+  - `lumen-transform`: Image transformation implementations
+  - `lumen`: Aggregated module for convenience
+  
 - 🛡️ **Type Safety**: Fully leverages Kotlin's type system
+  - Sealed classes for data sources (`ImageData`)
+  - Sealed classes for states (`ImageState`)
+  - Type-safe DSL API
+  - Immutable data classes for requests
 
 ---
 
@@ -101,26 +155,101 @@ Lumen.with(context)
 
 ---
 
-## 📊 Comparison with Glide / Coil
+## 📊 Comparison with Mainstream Libraries
 
-| Feature | Lumen | Glide | Coil |
-|---------|-------|-------|------|
-| **Kotlin-first** | ✅ Native Kotlin, fully leverages DSL, coroutines | ❌ Java-designed, limited Kotlin extensions | ✅ Kotlin-first |
-| **State Transparency** | ✅ Sealed Class, clear and controllable states | ⚠️ States not transparent enough | ⚠️ States not transparent enough |
-| **Pluggable Pipeline** | ✅ Every step is customizable | ⚠️ Partially customizable | ⚠️ Partially customizable |
-| **RecyclerView Optimization** | ✅ Auto-cancel, prevents flickering | ✅ Supported | ✅ Supported |
-| **Transform Applied to Bitmap** | ✅ Directly applied to Bitmap | ❌ Applied to View | ✅ Applied to Bitmap |
-| **Compose Support** | ✅ Native support | ⚠️ Requires adaptation | ✅ Native support |
-| **Encrypted Image Support** | ✅ Built-in Decryptor interface | ❌ Requires custom implementation | ❌ Requires custom implementation |
-| **Learning Curve** | ⭐⭐ Simple and intuitive | ⭐⭐⭐ Complex features | ⭐⭐ Relatively simple |
-| **Package Size** | 📦 Small (modular) | 📦📦 Medium | 📦 Small |
-| **Maturity** | 🆕 New project | ✅ Very mature | ✅ Mature |
+### Feature Comparison Table
+
+| Feature | Lumen | Glide | Coil | Fresco | Picasso |
+|---------|-------|-------|------|--------|---------|
+| **Kotlin-first** | ✅ Native Kotlin, DSL, coroutines, Flow | ❌ Java-designed, limited Kotlin extensions | ✅ Kotlin-first, coroutines | ❌ Java-designed | ❌ Java-designed |
+| **State Transparency** | ✅ Sealed Class, clear states (Loading/Success/Error/Fallback) | ⚠️ States not transparent enough | ⚠️ States not transparent enough | ⚠️ States not transparent enough | ⚠️ States not transparent enough |
+| **Pluggable Pipeline** | ✅ Every step customizable (Fetcher→Decryptor→Decoder→Transformer→Cache) | ⚠️ Partially customizable | ⚠️ Partially customizable | ⚠️ Partially customizable | ⚠️ Limited customization |
+| **RecyclerView Optimization** | ✅ Auto-cancel, prevents flickering | ✅ Supported | ✅ Supported | ✅ Supported | ⚠️ Manual cancellation needed |
+| **Transform Applied to** | ✅ Bitmap (direct pixel manipulation) | ❌ View (applied to ImageView) | ✅ Bitmap | ✅ Bitmap | ❌ View |
+| **Compose Support** | ✅ Native Compose components | ⚠️ Requires adaptation | ✅ Native support | ❌ No official support | ❌ No official support |
+| **Encrypted Image Support** | ✅ Built-in Decryptor interface | ❌ Requires custom implementation | ❌ Requires custom implementation | ❌ Requires custom implementation | ❌ Requires custom implementation |
+| **Memory Management** | ✅ LruCache, automatic memory management | ✅ Advanced memory management | ✅ Automatic memory management | ✅ Ashmem (Android <5.0), advanced | ⚠️ Basic memory management |
+| **Disk Cache** | ⚠️ Manual implementation | ✅ Automatic disk cache | ✅ Automatic disk cache | ✅ Automatic disk cache | ✅ Automatic disk cache |
+| **GIF Support** | ❌ Not supported | ✅ Full support | ✅ Full support | ✅ Full support | ❌ Not supported |
+| **WebP Support** | ✅ Supported | ✅ Supported | ✅ Supported | ✅ Supported | ✅ Supported |
+| **Progressive Loading** | ❌ Not supported | ✅ Supported | ✅ Supported | ✅ Supported | ❌ Not supported |
+| **Learning Curve** | ⭐⭐ Simple and intuitive | ⭐⭐⭐ Complex features | ⭐⭐ Relatively simple | ⭐⭐⭐ Complex setup | ⭐ Simple |
+| **Package Size** | 📦 Small (~50KB core, modular) | 📦📦 Medium (~475KB) | 📦 Small (~200KB) | 📦📦📦 Large (~3.4MB) | 📦 Small (~120KB) |
+| **API Design** | ✅ Modern DSL, type-safe | ⚠️ Builder pattern | ✅ Modern Kotlin API | ⚠️ Complex API | ✅ Simple API |
+| **Coroutine Support** | ✅ Native Flow-based | ⚠️ Limited support | ✅ Native support | ❌ No support | ❌ No support |
+| **Maturity** | 🆕 New project | ✅ Very mature (2014) | ✅ Mature (2019) | ✅ Very mature (2015) | ✅ Very mature (2013) |
+| **Community** | 🆕 Growing | ✅ Large community | ✅ Active community | ✅ Large community | ⚠️ Less active |
+
+### Detailed Comparison
+
+#### **Lumen vs Glide**
+
+| Aspect | Lumen | Glide |
+|--------|-------|-------|
+| **Architecture** | Kotlin-first, Flow-based, modular design | Java-based, mature but complex |
+| **State Management** | Sealed Class with explicit states | Implicit state handling |
+| **Customization** | Every pipeline step is pluggable | Limited customization points |
+| **Best For** | Kotlin projects, AI scenarios, state control | GIF support, mature ecosystem, Java projects |
+
+#### **Lumen vs Coil**
+
+| Aspect | Lumen | Coil |
+|--------|-------|------|
+| **State Management** | Sealed Class with Fallback state | Basic state handling |
+| **Pipeline Transparency** | Fully transparent, every step customizable | Partially transparent |
+| **Encryption Support** | Built-in Decryptor interface | Requires custom implementation |
+| **Best For** | AI scenarios, encrypted images, state control | General Kotlin projects, Compose apps |
+
+#### **Lumen vs Fresco**
+
+| Aspect | Lumen | Fresco |
+|--------|-------|--------|
+| **Package Size** | Small (~50KB core) | Large (~3.4MB) |
+| **Memory Management** | LruCache-based | Advanced Ashmem (Android <5.0) |
+| **Kotlin Support** | Native Kotlin-first | Java-based |
+| **Compose Support** | Native support | No official support |
+| **Best For** | Modern Kotlin apps, Compose projects | Large-scale apps, complex memory scenarios |
+
+#### **Lumen vs Picasso**
+
+| Aspect | Lumen | Picasso |
+|--------|-------|---------|
+| **Modern Features** | Kotlin-first, coroutines, Flow | Java-based, simple API |
+| **State Management** | Explicit sealed class states | Basic callback-based |
+| **Transform** | Applied to Bitmap | Applied to View |
+| **Best For** | Modern Kotlin projects, state control | Simple projects, minimal dependencies |
 
 ### Recommendation
 
-- **Choose Lumen**: Need state control, transparent pipeline, AI scenario support, Kotlin-first experience
-- **Choose Glide**: Need GIF support, very mature ecosystem, many third-party plugins
-- **Choose Coil**: Need lightweight, native Compose support, modern Kotlin API
+- **Choose Lumen**: 
+  - ✅ Need precise state control (Loading/Success/Error/Fallback)
+  - ✅ Need transparent, pluggable pipeline
+  - ✅ AI scenario support (encrypted images, custom decoding)
+  - ✅ Kotlin-first experience with DSL and coroutines
+  - ✅ Jetpack Compose projects
+  - ✅ Want small package size with modular design
+
+- **Choose Glide**: 
+  - ✅ Need GIF animation support
+  - ✅ Need very mature ecosystem with many plugins
+  - ✅ Java projects or mixed Java/Kotlin projects
+  - ✅ Need advanced caching strategies
+
+- **Choose Coil**: 
+  - ✅ Need lightweight library with Compose support
+  - ✅ Modern Kotlin API with coroutines
+  - ✅ General-purpose image loading
+
+- **Choose Fresco**: 
+  - ✅ Large-scale apps with complex memory requirements
+  - ✅ Need progressive image loading
+  - ✅ Need advanced memory management (especially for Android <5.0)
+  - ✅ Can accept large library size (~3.4MB)
+
+- **Choose Picasso**: 
+  - ✅ Simple projects with minimal requirements
+  - ✅ Want smallest possible library size
+  - ✅ Don't need GIF or advanced features
 
 ---
 
@@ -281,31 +410,78 @@ Lumen.with(context)
 ### Core Loading Pipeline
 
 ```
-ImageRequest
+ImageRequest (immutable data class)
    ↓
-Fetcher (Network / File / Uri / Resource)
+[1] Memory Cache Check → If hit, return cached Bitmap
    ↓
-Decryptor (Optional)
+[2] Fetcher (Network / File / Uri / Resource)
+   - NetworkFetcher: HttpURLConnection-based network loading
+   - FileFetcher: Local file system access
+   - UriFetcher: ContentProvider access
+   - ResourceFetcher: Android resource access
    ↓
-Decoder (BitmapFactory)
+[3] Decryptor (Optional)
+   - Custom ImageDecryptor interface
+   - Supports encrypted images for AI scenarios
+   - Decryption happens in memory (no disk I/O)
    ↓
-Transformer (Optional: rounded corners, rotation, crop, blur, etc.)
+[4] Decoder (BitmapFactory)
+   - Uses Android BitmapFactory
+   - Supports custom BitmapFactory.Options
+   - Automatic error handling
    ↓
-Cache (Memory Cache)
+[5] Transformer (Optional: rounded corners, rotation, crop, blur, etc.)
+   - Applied directly to Bitmap pixels
+   - Supports chained transformations
+   - Smart View-level clipping for certain scaleTypes
    ↓
-Target (ImageView / Compose / Custom)
+[6] Memory Cache (LruCache)
+   - Automatic cache key generation
+   - Thread-safe operations
+   - Configurable cache size
+   ↓
+[7] Target (ImageView / Compose / Custom)
+   - ImageViewTarget: Automatic RecyclerView optimization
+   - LumenImage: Compose composable
+   - Custom targets via Flow collection
 ```
 
-**Core Principle: Every step is pluggable**
+**Core Principle: Every step is pluggable and transparent**
+
+- Each step is an interface that can be customized
+- Pipeline is fully observable via Flow
+- Error handling at each step with clear error states
+- No black box operations - everything is traceable
 
 ### Module Structure
 
 ```
 Lumen/
  ├── lumen-core        // Core loading logic (no Android UI dependencies)
+ │   ├── Lumen.kt              // Main loader class
+ │   ├── ImageRequest.kt       // Request model
+ │   ├── ImageState.kt         // State model (Sealed Class)
+ │   ├── Fetcher.kt            // Data fetching (Network/File/Uri/Resource)
+ │   ├── ImageDecryptor.kt     // Decryption interface
+ │   ├── Decoder.kt             // Bitmap decoding
+ │   ├── BitmapTransformer.kt  // Transformation interface
+ │   └── Cache.kt               // Memory cache (LruCache)
+ │
  ├── lumen-view        // ImageView / ViewTarget / Compose support
- ├── lumen-transform   // Image transformers (rounded corners, rotation, crop, blur)
- └── sample-app        // Sample project
+ │   ├── RequestBuilder.kt     // DSL API builder
+ │   ├── ImageViewTarget.kt    // ImageView integration
+ │   ├── RecyclerViewExtensions.kt  // RecyclerView optimization
+ │   └── compose/
+ │       └── LumenImage.kt      // Compose composable
+ │
+ ├── lumen-transform   // Image transformers
+ │   ├── RoundedCornersTransformer.kt  // Rounded corners
+ │   ├── RotateTransformer.kt          // Rotation
+ │   ├── CropTransformer.kt            // Cropping
+ │   └── BlurTransformer.kt            // Blur effect
+ │
+ ├── lumen             // Aggregated module (convenience)
+ └── app               // Sample application
 ```
 
 ### State Model
