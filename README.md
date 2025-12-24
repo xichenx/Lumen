@@ -737,8 +737,8 @@ Special thanks to the Glide and Coil projects for their tremendous contributions
 
 ## 📞 Contact
 
-- **Issues**: [GitHub Issues](https://github.com/your-username/lumen/issues)
-- **Email**: your-email@example.com
+- **Issues**: [GitHub Issues](https://github.com/MartinLiuMingZhi/Lumen/issues)
+- **Email**: 3108531642@qq.com
 
 ---
 
