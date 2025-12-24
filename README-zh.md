@@ -1,8 +1,5 @@
 <div align="center">
-
-# Lumen
-
-
+<img src="logo.png" style="width: 60%; max-width: 240px;" />
 </div>
 
 <div align="center">
