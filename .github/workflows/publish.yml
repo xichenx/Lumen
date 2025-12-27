@@ -252,7 +252,8 @@ jobs:
           # 2. Base64 编码格式（需要解码）
           
           # 使用 grep -F 进行固定字符串匹配，避免将 - 解释为选项
-          if echo "$GPG_PRIVATE_KEY" | grep -Fq "-----BEGIN PGP"; then
+          # 或者使用 echo + grep 的组合来避免选项解析问题
+          if echo "$GPG_PRIVATE_KEY" | grep -F -- "-----BEGIN PGP" > /dev/null 2>&1; then
             # ASCII armor 格式，直接导入
             echo "📋 Detected ASCII armor format GPG key"
             echo "$GPG_PRIVATE_KEY" | gpg --batch --yes --import 2>&1 || {
@@ -304,17 +305,72 @@ jobs:
           echo "gpg_configured=true" >> $GITHUB_OUTPUT
           echo "✅ GPG Key ID: $KEY_ID"
           
+          # 配置 GPG 以在非交互式环境中工作
+          mkdir -p ~/.gnupg
+          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf 2>/dev/null || echo "allow-loopback-pinentry" > ~/.gnupg/gpg-agent.conf
+          
+          # 重启 gpg-agent 以应用配置
+          gpgconf --kill gpg-agent 2>/dev/null || true
+          
           # 导出密钥文件用于 Gradle 签名
-          gpg --export-secret-keys --armor "$KEY_ID" > secret.gpg || {
-            echo "❌ Failed to export GPG key"
-            exit 1
-          }
+          # 方法1: 使用 --pinentry-mode loopback 和 --passphrase-fd
+          echo "📤 Exporting GPG key..."
+          if echo "$GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --export-secret-keys --armor "$KEY_ID" > secret.gpg 2>&1; then
+            # 验证导出的文件
+            if [ -f secret.gpg ] && [ -s secret.gpg ] && grep -q "BEGIN PGP PRIVATE KEY BLOCK" secret.gpg; then
+              echo "✅ GPG key exported successfully to secret.gpg"
+            else
+              echo "⚠️  Exported file seems invalid, trying method 2..."
+              rm -f secret.gpg
+            fi
+          else
+            echo "⚠️  Method 1 failed, trying method 2..."
+            rm -f secret.gpg
+          fi
           
-          echo "✅ GPG key exported to secret.gpg"
-          
-          # 验证密钥
+          # 方法2: 如果方法1失败，尝试使用环境变量
           if [ ! -f secret.gpg ] || [ ! -s secret.gpg ]; then
-            echo "❌ GPG key file is empty or missing"
+            echo "📤 Trying alternative export method..."
+            GPG_TTY=$(tty) || GPG_TTY=/dev/tty
+            export GPG_TTY
+            echo "$GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --export-secret-keys --armor "$KEY_ID" > secret.gpg 2>&1 || {
+              echo "⚠️  Method 2 also failed, trying method 3..."
+              rm -f secret.gpg
+            }
+          fi
+          
+          # 方法3: 如果前两种方法都失败，尝试重新导入并导出
+          if [ ! -f secret.gpg ] || [ ! -s secret.gpg ]; then
+            echo "📤 Trying method 3: re-import and export..."
+            # 重新导入密钥（确保在正确的环境中）
+            if echo "$GPG_PRIVATE_KEY" | grep -F -- "-----BEGIN PGP" > /dev/null 2>&1; then
+              echo "$GPG_PRIVATE_KEY" | gpg --batch --yes --import 2>&1
+            else
+              CLEANED_KEY=$(echo "$GPG_PRIVATE_KEY" | \
+                sed -e '/-----BEGIN CERTIFICATE-----/d' \
+                    -e '/-----END CERTIFICATE-----/d' \
+                    -e '/-----BEGIN PGP PRIVATE KEY BLOCK-----/d' \
+                    -e '/-----END PGP PRIVATE KEY BLOCK-----/d' \
+                    -e '/-----BEGIN PGP PUBLIC KEY BLOCK-----/d' \
+                    -e '/-----END PGP PUBLIC KEY BLOCK-----/d' \
+                    -e '/^$/d' | \
+                tr -d '\n\r ')
+              echo "$CLEANED_KEY" | base64 -d 2>/dev/null | gpg --batch --yes --import 2>&1
+            fi
+            # 再次尝试导出
+            echo "$GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --export-secret-keys --armor "$KEY_ID" > secret.gpg 2>&1 || true
+          fi
+          
+          # 最终验证
+          if [ -f secret.gpg ] && [ -s secret.gpg ] && grep -q "BEGIN PGP PRIVATE KEY BLOCK" secret.gpg; then
+            echo "✅ GPG key successfully exported to secret.gpg"
+            echo "   File size: $(wc -c < secret.gpg) bytes"
+          else
+            echo "❌ Failed to export GPG key after all methods"
+            echo "   This will cause signing to fail"
+            echo "   Debug: Listing keys in keyring"
+            gpg --list-secret-keys --keyid-format LONG 2>&1 || true
             exit 1
           fi
       
