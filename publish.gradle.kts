@@ -115,10 +115,23 @@ afterEvaluate {
                 url = uri(if (versionName.endsWith("SNAPSHOT")) snapshotsRepoUrl else releasesRepoUrl)
                 
                 credentials {
-                    username = project.findProperty("SONATYPE_USERNAME") as String?
+                    val sonatypeUsername = project.findProperty("SONATYPE_USERNAME") as String?
                         ?: System.getenv("SONATYPE_USERNAME")
-                    password = project.findProperty("SONATYPE_PASSWORD") as String?
+                    val sonatypePassword = project.findProperty("SONATYPE_PASSWORD") as String?
                         ?: System.getenv("SONATYPE_PASSWORD")
+                    
+                    username = sonatypeUsername
+                    password = sonatypePassword
+                    
+                    // 调试信息（不打印实际密码）
+                    if (sonatypeUsername.isNullOrBlank() || sonatypePassword.isNullOrBlank()) {
+                        logger.warn("⚠️  Sonatype credentials are missing or empty")
+                        logger.warn("   SONATYPE_USERNAME: ${if (sonatypeUsername.isNullOrBlank()) "not set" else "set (${sonatypeUsername.length} chars)"}")
+                        logger.warn("   SONATYPE_PASSWORD: ${if (sonatypePassword.isNullOrBlank()) "not set" else "set (${sonatypePassword.length} chars)"}")
+                        logger.warn("   Make sure SONATYPE_USERNAME and SONATYPE_PASSWORD are set in GitHub Secrets")
+                    } else {
+                        logger.info("✅ Sonatype credentials configured (username: ${sonatypeUsername.take(3)}***, password: ${"*".repeat(sonatypePassword.length)})")
+                    }
                 }
             }
         }

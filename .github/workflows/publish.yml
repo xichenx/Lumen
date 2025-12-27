@@ -458,6 +458,20 @@ jobs:
             exit 0
           fi
           
+          # 验证凭据（不打印实际值）
+          echo "🔐 Verifying Sonatype credentials..."
+          USERNAME_LEN=${#SONATYPE_USERNAME}
+          PASSWORD_LEN=${#SONATYPE_PASSWORD}
+          echo "   Username: ${SONATYPE_USERNAME:0:3}*** (length: $USERNAME_LEN)"
+          echo "   Password: $(printf '*%.0s' $(seq 1 $PASSWORD_LEN)) (length: $PASSWORD_LEN)"
+          echo "   Group ID: io.github.xichenx"
+          echo ""
+          echo "⚠️  If you get 401 errors, check:"
+          echo "   1. SONATYPE_USERNAME and SONATYPE_PASSWORD are correct in GitHub Secrets"
+          echo "   2. Your Sonatype account has access to groupId 'io.github.xichenx'"
+          echo "   3. You may need to use a token instead of password (check Sonatype settings)"
+          echo ""
+          
           echo "🚀 Publishing version $VERSION to Maven Central..."
           echo "📦 Publishing modules: lumen-core, lumen-view, lumen-transform, lumen"
           echo "⚡ Using optimized parallel publishing with dependency management..."
