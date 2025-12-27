@@ -250,28 +250,44 @@ jobs:
           # 支持两种格式：
           # 1. ASCII armor 格式（包含 -----BEGIN PGP PRIVATE KEY BLOCK-----）
           # 2. Base64 编码格式（需要解码）
-          if echo "$GPG_PRIVATE_KEY" | grep -q "-----BEGIN PGP"; then
+          
+          # 使用 grep -F 进行固定字符串匹配，避免将 - 解释为选项
+          if echo "$GPG_PRIVATE_KEY" | grep -Fq "-----BEGIN PGP"; then
             # ASCII armor 格式，直接导入
             echo "📋 Detected ASCII armor format GPG key"
-            echo "$GPG_PRIVATE_KEY" | gpg --batch --yes --import || {
+            echo "$GPG_PRIVATE_KEY" | gpg --batch --yes --import 2>&1 || {
               echo "❌ Failed to import GPG key (ASCII armor format)"
+              echo "   Debug: Checking key format..."
+              echo "$GPG_PRIVATE_KEY" | head -5
               exit 1
             }
           else
             # Base64 编码格式，需要解码
             echo "📋 Detected Base64 encoded GPG key"
             # 清理可能的头部/尾部标记和空行（类似 keystore 的处理）
-            echo "$GPG_PRIVATE_KEY" | \
+            CLEANED_KEY=$(echo "$GPG_PRIVATE_KEY" | \
               sed -e '/-----BEGIN CERTIFICATE-----/d' \
                   -e '/-----END CERTIFICATE-----/d' \
                   -e '/-----BEGIN PGP PRIVATE KEY BLOCK-----/d' \
                   -e '/-----END PGP PRIVATE KEY BLOCK-----/d' \
+                  -e '/-----BEGIN PGP PUBLIC KEY BLOCK-----/d' \
+                  -e '/-----END PGP PUBLIC KEY BLOCK-----/d' \
                   -e '/^$/d' | \
-              base64 -d | gpg --batch --yes --import || {
+              tr -d '\n\r ')
+            
+            # 尝试 base64 解码
+            if echo "$CLEANED_KEY" | base64 -d 2>/dev/null | gpg --batch --yes --import 2>&1; then
+              echo "✅ GPG key imported successfully (Base64 format)"
+            else
               echo "❌ Failed to import GPG key (Base64 format)"
               echo "   Make sure GPG_PRIVATE_KEY is properly base64 encoded"
+              echo "   Or use ASCII armor format (with -----BEGIN PGP PRIVATE KEY BLOCK-----)"
+              echo ""
+              echo "   Debug info:"
+              echo "   - Key length: ${#CLEANED_KEY} characters"
+              echo "   - First 50 chars: ${CLEANED_KEY:0:50}..."
               exit 1
-            }
+            fi
           fi
           
           # 提取密钥 ID
