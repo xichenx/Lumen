@@ -246,17 +246,41 @@ jobs:
           
           echo "Setting up GPG signing..."
           
-          # 导入 GPG 密钥
-          echo "$GPG_PRIVATE_KEY" | base64 --decode | gpg --batch --yes --import || {
-            echo "❌ Failed to import GPG key"
-            exit 1
-          }
+          # 检测密钥格式并导入 GPG 密钥
+          # 支持两种格式：
+          # 1. ASCII armor 格式（包含 -----BEGIN PGP PRIVATE KEY BLOCK-----）
+          # 2. Base64 编码格式（需要解码）
+          if echo "$GPG_PRIVATE_KEY" | grep -q "-----BEGIN PGP"; then
+            # ASCII armor 格式，直接导入
+            echo "📋 Detected ASCII armor format GPG key"
+            echo "$GPG_PRIVATE_KEY" | gpg --batch --yes --import || {
+              echo "❌ Failed to import GPG key (ASCII armor format)"
+              exit 1
+            }
+          else
+            # Base64 编码格式，需要解码
+            echo "📋 Detected Base64 encoded GPG key"
+            # 清理可能的头部/尾部标记和空行（类似 keystore 的处理）
+            echo "$GPG_PRIVATE_KEY" | \
+              sed -e '/-----BEGIN CERTIFICATE-----/d' \
+                  -e '/-----END CERTIFICATE-----/d' \
+                  -e '/-----BEGIN PGP PRIVATE KEY BLOCK-----/d' \
+                  -e '/-----END PGP PRIVATE KEY BLOCK-----/d' \
+                  -e '/^$/d' | \
+              base64 -d | gpg --batch --yes --import || {
+              echo "❌ Failed to import GPG key (Base64 format)"
+              echo "   Make sure GPG_PRIVATE_KEY is properly base64 encoded"
+              exit 1
+            }
+          fi
           
           # 提取密钥 ID
           KEY_ID=$(gpg --list-secret-keys --keyid-format LONG 2>/dev/null | grep -E "^(sec|SEC)" | head -1 | awk '{print $2}' | cut -d'/' -f2)
           
           if [ -z "$KEY_ID" ]; then
             echo "❌ Failed to extract GPG key ID"
+            echo "   Listing available keys for debugging:"
+            gpg --list-secret-keys --keyid-format LONG 2>/dev/null || true
             exit 1
           fi
           
