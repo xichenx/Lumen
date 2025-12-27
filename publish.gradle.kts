@@ -117,6 +117,26 @@ if (!isJitPack && project.plugins.hasPlugin("com.vanniktech.maven.publish")) {
     
     // 配置 mavenPublishing（使用 afterEvaluate 确保插件已初始化）
     afterEvaluate {
+        // artifactId 统一使用小写
+        val artifactId = project.name.lowercase()
+        
+        // 检查是否有冲突的 publication（保险起见）
+        if (project.plugins.hasPlugin("maven-publish")) {
+            extensions.configure<org.gradle.api.publish.PublishingExtension>("publishing") {
+                val publications = publications.withType<org.gradle.api.publish.maven.MavenPublication>()
+                val conflictingPubs = publications.filter { 
+                    it.groupId != publishGroupId || it.artifactId != artifactId 
+                }
+                if (conflictingPubs.isNotEmpty()) {
+                    logger.warn("⚠️  Found ${conflictingPubs.size} conflicting publication(s) for ${project.name}, removing them")
+                    conflictingPubs.forEach { pub ->
+                        publications.remove(pub)
+                        logger.warn("   Removed publication: ${pub.name} (${pub.groupId}:${pub.artifactId}:${pub.version})")
+                    }
+                }
+            }
+        }
+        
         // 使用简化的配置方式
         val mavenPublishing = extensions.findByName("mavenPublishing")
         if (mavenPublishing != null) {
@@ -127,7 +147,7 @@ if (!isJitPack && project.plugins.hasPlugin("com.vanniktech.maven.publish")) {
                     return@afterEvaluate
                 }
                 
-                logger.info("🔧 Configuring mavenPublishing for ${project.name}: groupId=$publishGroupId, artifactId=${project.name}, version=$versionName")
+                logger.info("🔧 Configuring mavenPublishing for ${project.name}: groupId=$publishGroupId, artifactId=$artifactId, version=$versionName")
                 
                 // 设置坐标
                 mavenPublishing.javaClass.getMethod(
@@ -135,7 +155,7 @@ if (!isJitPack && project.plugins.hasPlugin("com.vanniktech.maven.publish")) {
                     String::class.java,
                     String::class.java,
                     String::class.java
-                ).invoke(mavenPublishing, publishGroupId, project.name, versionName)
+                ).invoke(mavenPublishing, publishGroupId, artifactId, versionName)
                 
                 // 配置 Maven Central
                 // 注意：这可能会在清理时产生警告，但不会影响实际的发布
@@ -156,23 +176,31 @@ if (!isJitPack && project.plugins.hasPlugin("com.vanniktech.maven.publish")) {
 } else if (isJitPack) {
     // JitPack 模式：使用标准的 maven-publish
     // 注意：版本号与 Maven Central 保持一致（使用相同的 versionName）
+    
     if (!project.plugins.hasPlugin("maven-publish")) {
         project.plugins.apply("maven-publish")
     }
     
     afterEvaluate {
+        // artifactId 统一使用小写
+        val artifactId = project.name.lowercase()
+        
         extensions.configure<org.gradle.api.publish.PublishingExtension>("publishing") {
-            publications {
-                create<org.gradle.api.publish.maven.MavenPublication>("release") {
-                    from(components["release"])
-                    groupId = publishGroupId
-                    artifactId = project.name
-                    // 使用与 Maven Central 相同的版本号
-                    version = versionName
-                }
+            // 移除所有现有的 publication，避免与 com.vanniktech.maven.publish 插件创建的冲突
+            // 然后创建我们自己的 release publication
+            publications.removeAll { true }
+            
+            // 创建 release publication，使用 JitPack 的 groupId
+            publications.create<org.gradle.api.publish.maven.MavenPublication>("release") {
+                from(components["release"])
+                groupId = publishGroupId
+                artifactId = artifactId
+                version = versionName
             }
+            
+            logger.info("📦 Created JitPack publication: $publishGroupId:$artifactId:$versionName")
         }
-        logger.lifecycle("✅ JitPack 发布配置完成: ${project.name}")
+        logger.lifecycle("✅ JitPack 发布配置完成: ${project.name} (groupId=$publishGroupId, artifactId=$artifactId, version=$versionName)")
     }
 } else {
     // 非 JitPack 但插件未应用，只记录警告

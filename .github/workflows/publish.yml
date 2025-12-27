@@ -432,7 +432,8 @@ jobs:
         id: create_tag
         run: |
           VERSION="${{ needs.build.outputs.version }}"
-          TAG_NAME="v$VERSION"
+          # 使用不带 v 前缀的标签，这样 JitPack 依赖可以使用 0.0.2 而不是 v0.0.2
+          TAG_NAME="$VERSION"
           
           if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
             echo "⚠️  Tag $TAG_NAME already exists"
@@ -441,7 +442,7 @@ jobs:
           else
             git config --local user.email "action@github.com"
             git config --local user.name "GitHub Action"
-            git tag -a "$TAG_NAME" -m "Release v$VERSION"
+            git tag -a "$TAG_NAME" -m "Release $VERSION"
             git push origin "$TAG_NAME"
             echo "✅ Created and pushed tag $TAG_NAME"
             echo "tag_created=true" >> $GITHUB_OUTPUT
@@ -500,8 +501,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ needs.publish-jitpack.outputs.tag_name || format('v{0}', needs.build.outputs.version) }}
-          name: Release v${{ needs.build.outputs.version }}
+          tag_name: ${{ needs.publish-jitpack.outputs.tag_name || needs.build.outputs.version }}
+          name: Release ${{ needs.build.outputs.version }}
           body: |
             ## 📦 Library Release v${{ needs.build.outputs.version }}
             
