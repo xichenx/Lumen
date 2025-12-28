@@ -6,7 +6,8 @@ jdk:
 
 before_install:
   - chmod +x ./gradlew
-  - ./gradlew wrapper --gradle-version 8.5
+  # 使用项目中 gradle-wrapper.properties 配置的 Gradle 版本（8.13）
+  # 不需要手动设置版本，避免与 Android Gradle Plugin 要求不匹配
 
 # JitPack 模式：只构建根聚合模块 lumen
 # 强制使用正确的坐标格式：com.github.xichenx:lumen
