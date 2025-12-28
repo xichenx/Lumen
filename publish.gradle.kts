@@ -183,7 +183,7 @@ if (!isJitPack && project.plugins.hasPlugin("com.vanniktech.maven.publish")) {
     
     afterEvaluate {
         // artifactId 统一使用小写
-        val artifactId = project.name.lowercase()
+        val artifactIdValue = project.name.lowercase()
         
         extensions.configure<org.gradle.api.publish.PublishingExtension>("publishing") {
             // 移除所有现有的 publication，避免与 com.vanniktech.maven.publish 插件创建的冲突
@@ -194,13 +194,13 @@ if (!isJitPack && project.plugins.hasPlugin("com.vanniktech.maven.publish")) {
             publications.create<org.gradle.api.publish.maven.MavenPublication>("release") {
                 from(components["release"])
                 groupId = publishGroupId
-                artifactId = artifactId
+                artifactId = artifactIdValue
                 version = versionName
             }
             
-            logger.info("📦 Created JitPack publication: $publishGroupId:$artifactId:$versionName")
+            logger.info("📦 Created JitPack publication: $publishGroupId:$artifactIdValue:$versionName")
         }
-        logger.lifecycle("✅ JitPack 发布配置完成: ${project.name} (groupId=$publishGroupId, artifactId=$artifactId, version=$versionName)")
+        logger.lifecycle("✅ JitPack 发布配置完成: ${project.name} (groupId=$publishGroupId, artifactId=$artifactIdValue, version=$versionName)")
     }
 } else {
     // 非 JitPack 但插件未应用，只记录警告
