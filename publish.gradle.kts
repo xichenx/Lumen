@@ -45,10 +45,11 @@ val publishGroupId = if (isJitPack) {
 if (isJitPack && project.plugins.hasPlugin("maven-publish")) {
     // 使用 whenObjectAdded 来拦截 publication 的创建
     project.extensions.configure<org.gradle.api.publish.PublishingExtension>("publishing") {
-        publications.whenObjectAdded { pub ->
+        publications.whenObjectAdded { pub: org.gradle.api.publish.Publication ->
             // 如果 publication 的坐标不匹配，立即移除它
             if (pub is org.gradle.api.publish.maven.MavenPublication) {
-                if (pub.groupId != publishGroupId || pub.artifactId != project.name.lowercase()) {
+                val expectedArtifactId = project.name.lowercase()
+                if (pub.groupId != publishGroupId || pub.artifactId != expectedArtifactId) {
                     logger.warn("⚠️  Removing conflicting publication: ${pub.name} (${pub.groupId}:${pub.artifactId}:${pub.version})")
                     publications.remove(pub)
                 }
@@ -209,8 +210,13 @@ if (!isJitPack && project.plugins.hasPlugin("com.vanniktech.maven.publish")) {
             // 必须在创建新 publication 之前移除，避免依赖解析时的冲突
             val existingPubs = publications.toList()
             existingPubs.forEach { pub ->
+                val pubInfo = if (pub is org.gradle.api.publish.maven.MavenPublication) {
+                    "${pub.groupId}:${pub.artifactId}:${pub.version}"
+                } else {
+                    pub.name
+                }
                 publications.remove(pub)
-                logger.info("🗑️  Removed existing publication: ${pub.name} (${pub.groupId}:${pub.artifactId}:${pub.version})")
+                logger.info("🗑️  Removed existing publication: ${pub.name} ($pubInfo)")
             }
             
             // 创建我们自己的 release publication，使用正确的坐标
