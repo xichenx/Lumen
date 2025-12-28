@@ -40,6 +40,23 @@ val publishGroupId = if (isJitPack) {
     "io.github.$githubUser"
 }
 
+// 在 JitPack 模式下，尽早移除冲突的 publication
+// 这需要在配置阶段执行，在依赖解析之前
+if (isJitPack && project.plugins.hasPlugin("maven-publish")) {
+    // 使用 whenObjectAdded 来拦截 publication 的创建
+    project.extensions.configure<org.gradle.api.publish.PublishingExtension>("publishing") {
+        publications.whenObjectAdded { pub ->
+            // 如果 publication 的坐标不匹配，立即移除它
+            if (pub is org.gradle.api.publish.maven.MavenPublication) {
+                if (pub.groupId != publishGroupId || pub.artifactId != project.name.lowercase()) {
+                    logger.warn("⚠️  Removing conflicting publication: ${pub.name} (${pub.groupId}:${pub.artifactId}:${pub.version})")
+                    publications.remove(pub)
+                }
+            }
+        }
+    }
+}
+
 // 设置项目版本（JitPack 和 Maven Central 使用相同的版本号）
 version = versionName
 logger.info("📦 Publishing version: $versionName for ${project.name}")
@@ -181,16 +198,22 @@ if (!isJitPack && project.plugins.hasPlugin("com.vanniktech.maven.publish")) {
         project.plugins.apply("maven-publish")
     }
     
-    afterEvaluate {
+    // 在配置阶段就拦截并移除冲突的 publication
+    // 使用 whenObjectAdded 来在 publication 创建时立即处理
+    project.afterEvaluate {
         // artifactId 统一使用小写
         val artifactIdValue = project.name.lowercase()
         
         extensions.configure<org.gradle.api.publish.PublishingExtension>("publishing") {
-            // 移除所有现有的 publication，避免与 com.vanniktech.maven.publish 插件创建的冲突
-            // 然后创建我们自己的 release publication
-            publications.removeAll { true }
+            // 移除所有现有的 publication（包括 com.vanniktech.maven.publish 自动创建的）
+            // 必须在创建新 publication 之前移除，避免依赖解析时的冲突
+            val existingPubs = publications.toList()
+            existingPubs.forEach { pub ->
+                publications.remove(pub)
+                logger.info("🗑️  Removed existing publication: ${pub.name} (${pub.groupId}:${pub.artifactId}:${pub.version})")
+            }
             
-            // 创建 release publication，使用 JitPack 的 groupId
+            // 创建我们自己的 release publication，使用正确的坐标
             publications.create<org.gradle.api.publish.maven.MavenPublication>("release") {
                 from(components["release"])
                 groupId = publishGroupId
