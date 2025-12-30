@@ -252,6 +252,18 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Update version in gradle.properties
+        run: |
+          VERSION="${{ needs.build.outputs.version }}"
+          if grep -q "^LIBRARY_VERSION_NAME=" gradle.properties; then
+            sed -i "s/^LIBRARY_VERSION_NAME=.*/LIBRARY_VERSION_NAME=$VERSION/" gradle.properties
+          else
+            echo "LIBRARY_VERSION_NAME=$VERSION" >> gradle.properties
+          fi
+          sed -i "s/^VERSION_NAME=.*/VERSION_NAME=$VERSION/" gradle.properties
+          echo "✅ Updated LIBRARY_VERSION_NAME and VERSION_NAME to $VERSION for Maven Central publish"
+          grep -E "^(LIBRARY_VERSION_NAME|VERSION_NAME)=" gradle.properties || true
+
       - name: Publish to Maven Central
         id: publish
         env:
@@ -281,6 +293,8 @@ jobs:
             # 执行发布任务，捕获输出和退出码
             set +e
             PUBLISH_OUTPUT=$(./gradlew :lumen:publishToMavenCentral \
+                -PLIBRARY_VERSION_NAME="$VERSION" \
+                -PVERSION_NAME="$VERSION" \
                 --no-daemon \
                 --stacktrace \
                 --console=plain 2>&1)
@@ -342,8 +356,8 @@ jobs:
         id: create_tag
         run: |
           VERSION="${{ needs.build.outputs.version }}"
-          # JitPack 标签使用 v 前缀（如 v1.0.0），但依赖坐标中的版本号不带 v（如 1.0.0）
-          TAG_NAME="v$VERSION"
+          # JitPack 标签不带 v 前缀（如 1.0.0），依赖坐标中的版本号也是 1.0.0
+          TAG_NAME="$VERSION"
           
           if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
             echo "⚠️  Tag $TAG_NAME already exists"
@@ -425,7 +439,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ needs.publish-jitpack.outputs.tag_name || needs.build.outputs.version }}
-          name: Release ${{ needs.build.outputs.version }}
+          name: Release v${{ needs.build.outputs.version }}
           body: |
             ## 📦 Library Release v${{ needs.build.outputs.version }}
             
